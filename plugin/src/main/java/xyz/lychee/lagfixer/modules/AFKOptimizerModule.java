@@ -107,73 +107,78 @@ public class AFKOptimizerModule extends AbstractModule implements Listener, Runn
 
                 if (this.kick_afk_players_enabled && afkTime > this.kick_afk_time) {
                     String kickMessage = this.getLanguage().getString("afk_kick", true);
-                    Bukkit.getRegionScheduler()
-                            .run(this.getPlugin(), currentLocation, t -> {
-                                if (!player.isOnline()) return;
+                    player.getScheduler().run(this.getPlugin(), t -> {
+                        if (!player.isOnline()) return;
 
-                                player.kickPlayer(kickMessage);
-                            });
+                        player.kickPlayer(kickMessage);
+                    }, null);
                 } else if (this.teleport_afk_players && afkTime > this.teleport_afk_time && this.teleport_location != null) {
                     if (!Objects.equals(currentLocation.getWorld(), this.teleport_location.getWorld())) {
-                        Bukkit.getRegionScheduler()
-                                .run(this.getPlugin(), currentLocation, t -> {
-                                    if (!player.isOnline()) return;
+                        player.getScheduler().run(this.getPlugin(), t -> {
+                            if (!player.isOnline()) return;
 
-                                    if (this.teleport_back) {
-                                        afkPlayer.setBackLocation(currentLocation);
-                                    }
-                                    player.teleport(this.teleport_location);
-                                });
+                            if (this.teleport_back) {
+                                afkPlayer.setBackLocation(player.getLocation());
+                            }
+                            player.teleport(this.teleport_location);
+                        }, null);
                     }
                 } else if (this.hide_entities && afkTime > this.hide_afk_time && afkPlayer.getHiddenEntities().isEmpty()) {
-                    Bukkit.getRegionScheduler()
-                            .run(this.getPlugin(), currentLocation, t -> {
-                                if (!player.isOnline()) return;
+                    player.getScheduler().run(this.getPlugin(), t -> {
+                        if (!player.isOnline()) return;
 
-                                if (this.hide_players) {
-                                    for (Player o : Bukkit.getOnlinePlayers()) {
-                                        if (!o.equals(player) && afkPlayer.getHiddenEntities().add(o)) {
-                                            player.hidePlayer(this.getPlugin(), o);
-                                        }
-                                    }
+                        List<Entity> entitiesToHide = player.getNearbyEntities(this.hide_distance_search, this.hide_distance_search, this.hide_distance_search);
+                        if (entitiesToHide.isEmpty()) return;
+
+                        for (Entity entity : entitiesToHide) {
+                            if (!Bukkit.isOwnedByCurrentRegion(entity)) continue;
+
+                            if (entity instanceof Player targetPlayer) {
+                                if (this.hide_players && !targetPlayer.equals(player) && afkPlayer.getHiddenEntities().add(targetPlayer)) {
+                                    player.hidePlayer(this.getPlugin(), targetPlayer);
                                 }
-
-                                List<Entity> entitiesToHide = player.getNearbyEntities(this.hide_distance_search, this.hide_distance_search, this.hide_distance_search);
-                                if (entitiesToHide.isEmpty()) return;
-
-                                entitiesToHide.forEach(entity -> {
-                                    if (entity instanceof Player || !afkPlayer.getHiddenEntities().add(entity)) return;
-
+                            } else {
+                                if (afkPlayer.getHiddenEntities().add(entity)) {
                                     player.hideEntity(this.getPlugin(), entity);
-                                });
-                            });
+                                }
+                            }
+                        }
+                    }, null);
                 }
             } else {
                 afkPlayer.getAfkTime().reset();
                 if (this.teleport_back && afkPlayer.getBackLocation() != null) {
-                    Bukkit.getRegionScheduler()
-                            .run(this.getPlugin(), currentLocation, t -> {
-                                if (!player.isOnline()) return;
+                    player.getScheduler().run(this.getPlugin(), t -> {
+                        if (!player.isOnline()) return;
 
-                                player.teleport(afkPlayer.getBackLocation());
-                                afkPlayer.setBackLocation(null);
-                            });
+                        player.teleport(afkPlayer.getBackLocation());
+                        afkPlayer.setBackLocation(null);
+                    }, null);
                 } else if (this.hide_entities && !afkPlayer.getHiddenEntities().isEmpty()) {
-                    Bukkit.getRegionScheduler()
-                            .run(this.getPlugin(), currentLocation, t -> {
-                                if (!player.isOnline()) return;
+                    player.getScheduler().run(this.getPlugin(), t -> {
+                        if (!player.isOnline()) {
+                            afkPlayer.getHiddenEntities().clear();
+                            return;
+                        }
 
-                                ISupportNms nms = SupportManager.getInstance().getNms();
+                        for (Entity entity : afkPlayer.getHiddenEntities()) {
+                            if (!Bukkit.isOwnedByCurrentRegion(entity)) {
+                                continue;
+                            }
 
-                                afkPlayer.getHiddenEntities().forEach(entity -> {
-                                    if (entity instanceof Player targetPlayer) {
+                            try {
+                                if (entity instanceof Player targetPlayer) {
+                                    if (targetPlayer.isOnline()) {
                                         player.showPlayer(this.getPlugin(), targetPlayer);
-                                    } else if (entity.isValid() && !entity.isDead()) {
-                                        player.showEntity(this.getPlugin(), entity);
                                     }
-                                });
-                                afkPlayer.getHiddenEntities().clear();
-                            });
+                                } else if (entity.isValid() && !entity.isDead()) {
+                                    player.showEntity(this.getPlugin(), entity);
+                                }
+                            } catch (Throwable ignored) {
+                            }
+                        }
+                        afkPlayer.getHiddenEntities().clear();
+                    }, null);
                 }
             }
 
@@ -275,7 +280,7 @@ public class AFKOptimizerModule extends AbstractModule implements Listener, Runn
     public static class AfkPlayer {
         private final Player player;
         private final LongAdder afkTime = new LongAdder();
-        private final Set<Entity> hiddenEntities = new HashSet<>();
+        private final Set<Entity> hiddenEntities = ConcurrentHashMap.newKeySet();
         private volatile Location backLocation;
         private volatile Location location;
         private volatile boolean positionAfk;
