@@ -9,7 +9,7 @@ val sonatypeRepo = "https://oss.sonatype.org/content/groups/public/"
 val jitpack = "https://jitpack.io"
 val mojang = "https://libraries.minecraft.net"
 
-version = "1.7.1"
+version = "1.7.2"
 
 dependencies {
     implementation(project(":plugin"))
