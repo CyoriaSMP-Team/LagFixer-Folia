@@ -21,9 +21,9 @@
 
 ## ⚡ Requirements & Compatibility
 
-- **Java:** 21 or later [(use version 1.5.3 for java 8 support)](https://modrinth.com/plugin/lagfixer/version/1.5.3)
-- **Server:** Bukkit/Spigot/Paper, hybrid Forge, etc.
-- **Version range:** `1.13.2` – `26.2`
+- **Java:** 21
+- **Server:** Folia [(for paper use this version)](https://github.com/lajczik/lagfixer)
+- **Version range:** `1.20` – `26.3`
 
 ## 🧩 Modules Overview
 
