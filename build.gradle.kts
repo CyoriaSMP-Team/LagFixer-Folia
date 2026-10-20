@@ -32,8 +32,6 @@ tasks {
     shadowJar {
         archiveBaseName.set("LagFixer")
         archiveClassifier.set("folia")
-
-        destinationDirectory.set(file("C:/Users/lajczi/Desktop/testowy/plugins"))
     }
 }
 
